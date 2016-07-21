@@ -1,0 +1,23 @@
+/*
+ * DataIO.h
+ *
+ *  Created on: Jun 27, 2016
+ *      Author: hanyinbo
+ */
+
+#ifndef DATAIO_H_
+#define DATAIO_H_
+
+#include"utils/cpu_include.h"
+#include"cuda/DataMap.h"
+
+class DataIO {
+public:
+	static void saveVector4fMap2D(const Vector4fMap2D& vector4_map,const char* filename);
+	//static void loadVector4fMap2D(const Vector4fMap2D& normals_map,const char* filename);
+	static void saveColor3uMap2D(const Color3uMap2D& colors_map,const char* filename);
+	//static void loadVector4fMap2D(const Color3uMap2D& colors_map,const char* filename);
+
+};
+
+#endif /* DATAIO_H_ */
