@@ -10,7 +10,10 @@
 #include "AppParams.h"
 #include "cuda/CudaWrappers.h"
 #include "cuda/CudaDeviceDataMan.h"
+<<<<<<< HEAD
 //#include"keyframeMan.h"
+=======
+>>>>>>> f7d6df5e5ebb5e3d425bd48eb37cda280cd26a34
 MeshGeneratorMarchingcube::MeshGeneratorMarchingcube() {
 	// TODO Auto-generated constructor stub
 
@@ -96,5 +99,8 @@ bool MeshGeneratorMarchingcube::saveMesh(const string& filename)
 	ml::MeshIOf::saveToFile(filename, _meshes);
 	std::cout << "done!" << std::endl;
 	return 0;//textureMesh(filename);
+<<<<<<< HEAD
 
+=======
+>>>>>>> f7d6df5e5ebb5e3d425bd48eb37cda280cd26a34
 }
