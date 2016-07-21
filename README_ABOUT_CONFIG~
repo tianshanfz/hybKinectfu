@@ -1,0 +1,28 @@
+Here is some introductions to some variables in config.ini
+
+"record_rgbd" : 
+if this value is set to 1, all the captured data will stored as .oni file whose filename is set by "rgbd_record_filename".
+
+"read_rgbd_from_rgbddataset" : 
+the program will read data from eigher rgbd slam dataset files(http://vision.in.tum.de/data/datasets/rgbd-dataset) or OpenNI2 files/devices.
+
+"use_sdf_tracker" :
+the program will use either sdf tracker("Real-Time Camera Tracking and 3D Reconstruction Using Signed Distance Functions") or icp( kinectfusion)
+
+"rgbd_source_filename" : 
+"xxx.oni" or "null"(read from device)  when  read_rgbd_from_rgbddataset=0
+"xxxxx/" the dir must contains "depth.txt","rgb.txt" in rgbd slam dataset fileformats when  read_rgbd_from_rgbddataset=0
+
+"trajectory_source_filename" :
+this is valid only when record_trajectory=1 , the file will stored with format like "groundtruth.txt" int rgbd slam dataset
+
+
+
+
+
+
+
+
+
+
+ 
