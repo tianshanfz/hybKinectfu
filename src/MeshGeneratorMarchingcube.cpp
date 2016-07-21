@@ -10,7 +10,6 @@
 #include "AppParams.h"
 #include "cuda/CudaWrappers.h"
 #include "cuda/CudaDeviceDataMan.h"
-#include"keyframeMan.h"
 MeshGeneratorMarchingcube::MeshGeneratorMarchingcube() {
 	// TODO Auto-generated constructor stub
 
