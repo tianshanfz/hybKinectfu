@@ -14,7 +14,7 @@
 #include "CameraPoseFinderFromFile.h"
 #include "DataViewer.h"
 #include "DataIO.h"
-//#include "keyframeMan.h"
+#include "keyframeMan.h"
 
 
 HybKinectfu::HybKinectfu():_inited(false),_camera_pose_recorder(nullptr),_camera_pose_finder(nullptr) {
@@ -63,42 +63,36 @@ bool HybKinectfu::init()
 void HybKinectfu::copyFrameToGPU(const DepthFrameData& depth_frame,const ColorFrameData& color_frame)
 {
 	cv::Mat mat_depth=depth_frame.mat();
-	DepthfMap2D depth_data_cpu;
 	int rows=mat_depth.rows,cols=mat_depth.cols;
-
-	depth_data_cpu.create_cpu(cols,rows);
-	depth_data_cpu.setZero();
+	DepthfMap2D depth_data_cpu(CPU,cols,rows);
+	depth_data_cpu.clearData();
 	for(int row=0;row<rows;row++)
 	{
 		for(int col=0;col<cols;col++)
 		{
 			float v=mat_depth.at<unsigned short>(row,col)*0.001;//millimeter to meters
-			depth_data_cpu.set_data(col,row,v);
+			depth_data_cpu.at(col,row)=v;
 		}
 	}
-	CudaDeviceDataMan::instance()->_raw_depth.copyFrom(depth_data_cpu);
-	depth_data_cpu.destroy();
+
+	CudaDeviceDataMan::instance()->raw_depth.copyDataFrom(depth_data_cpu);
 
 	if(AppParams::instance()->_switch_params.useRGBData)
 	{
 		cv::Mat mat_rgb=color_frame.mat();
-		Color3uMap2D rgb_data_cpu;
 		rows=color_frame.mat().rows,cols=color_frame.mat().cols;
-		rgb_data_cpu.create_cpu(cols,rows);
-		rgb_data_cpu.setZero();
+		Color3uMap2D rgb_data_cpu(CPU,cols,rows);
+		rgb_data_cpu.clearData();
 		for(int row=0;row<rows;row++)
 		{
 			for(int col=0;col<cols;col++)
 			{
 				cv::Vec3b v=mat_rgb.at<cv::Vec3b>(row,col);
-				rgb_data_cpu.set_data(col,row,make_uchar3(v[0],v[1],v[2]));
+				rgb_data_cpu.at(col,row)=make_uchar3(v[0],v[1],v[2]);
 			}
 		}
-		CudaDeviceDataMan::instance()->_raw_rgb.copyFrom(rgb_data_cpu);
-
-		rgb_data_cpu.destroy();
+		CudaDeviceDataMan::instance()->raw_rgb.copyDataFrom(rgb_data_cpu);
 	}
-
 }
 
 bool HybKinectfu::processNewFrame(const DepthFrameData& depth_frame,const ColorFrameData& rgb_frame)
@@ -106,11 +100,12 @@ bool HybKinectfu::processNewFrame(const DepthFrameData& depth_frame,const ColorF
 	if(!_inited)return false;
 	double t0=clock();
 	copyFrameToGPU(depth_frame,rgb_frame);
-	//DataViewer::viewDepths(CudaDeviceDataMan::instance()->_raw_depth,"origin depth maps");
-	//DataViewer::viewColors(CudaDeviceDataMan::instance()->_raw_rgb,"origin color maps");
+	cout<<"copy done"<<endl;
+	DataViewer::viewDepths(CudaDeviceDataMan::instance()->raw_depth,"origin depth maps");
+	DataViewer::viewColors(CudaDeviceDataMan::instance()->raw_rgb,"origin color maps");
 	cudaTruncDepth(AppParams::instance()->_depth_prepocess_params.fMinTrunc,AppParams::instance()->_depth_prepocess_params.fMaxTrunc);
 	cudaBiliearFilterDepth(AppParams::instance()->_depth_prepocess_params.fSigmaPixel,AppParams::instance()->_depth_prepocess_params.fSigmaDepth);
-	//DataViewer::viewDepths(CudaDeviceDataMan::instance()->_filtered_depth,"filtered depth maps");
+	DataViewer::viewDepths(CudaDeviceDataMan::instance()->filtered_depth,"filtered depth maps");
 	cudaCalculateNewVertices(AppParams::instance()->_depth_camera_params);
 	cudaCalculateNewNormals();
 	cout<<"data preprocess cost"<<(clock()-t0)/1000.0<<"ms"<<endl;
@@ -127,6 +122,10 @@ bool HybKinectfu::processNewFrame(const DepthFrameData& depth_frame,const ColorF
 
 	if(camera_tracking_success)
 	{
+		if(depth_frame.frameId()%100==0)
+		{
+			KeyframeMan::instance()->addNewKeyFrame(depth_frame,rgb_frame,cur_camera_pose);
+		}
 		if(AppParams::instance()->_switch_params.recordTrajectory)
 		{
 			_camera_pose_recorder->recordCameraPose(cur_camera_pose,depth_frame.timeStamp());
@@ -143,6 +142,8 @@ bool HybKinectfu::processNewFrame(const DepthFrameData& depth_frame,const ColorF
 	else
 	{
 		cout<<"camera lost"<<endl;
+		DataViewer::viewNormal(CudaDeviceDataMan::instance()->new_normals_pyramid[0],"new normal maps");
+			cv::waitKey();
 	}
 	t0=clock();
 	cudaRaycastingVolume(AppParams::instance()->_switch_params.useRGBData,
@@ -152,7 +153,8 @@ bool HybKinectfu::processNewFrame(const DepthFrameData& depth_frame,const ColorF
 						AppParams::instance()->_depth_prepocess_params.fMinTrunc,
 						AppParams::instance()->_depth_prepocess_params.fMaxTrunc);
 	cout<<"raycasting cost"<<(clock()-t0)/1000.0<<"ms"<<endl;
-	DataViewer::viewNormal(CudaDeviceDataMan::instance()->_new_normals_pyramid[0],"new normal maps");
-	DataViewer::viewNormal(CudaDeviceDataMan::instance()->_model_normals_pyramid[0],"model normal maps");
+	DataViewer::viewNormal(CudaDeviceDataMan::instance()->new_normals_pyramid[0],"new normal maps");
+	DataViewer::viewNormal(CudaDeviceDataMan::instance()->model_normals_pyramid[0],"model normal maps");
+	DataViewer::viewColors(CudaDeviceDataMan::instance()->raycast_rgb,"raycast maps");
 	return true;
 }

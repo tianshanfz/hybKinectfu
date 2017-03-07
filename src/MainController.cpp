@@ -11,7 +11,7 @@
 #include "DataSourceProducerRGBDDataset.h"
 #include "MeshGeneratorMarchingcube.h"
 //#include "MeshGeneratorRaycasting.h"
-//#include "keyframeMan.h"
+#include "keyframeMan.h"
 MainController::MainController():_inited(false) {
 	//_data_source=new DataSourceProducerRGBDDataset();
 	_kinect_fusioner=nullptr;
@@ -29,7 +29,7 @@ MainController::~MainController() {
 void MainController::mainLoop()
 {
 	if(!_inited)return;
-	for(int i=0;i<3000;i++)
+	for(int i=0;i<2000;i++)
 	{
 		cout<<"frame "<<i<<endl;
 		DepthFrameData depth_frame(i);
@@ -47,14 +47,15 @@ void MainController::mainLoop()
 			break;
 		}
 
-		char c=cv::waitKey();
+		char c=cv::waitKey(1);
 		if('q'==c)break;
 		else if('p'==c)
 		{
 			c=cv::waitKey();
 		}
-		else if('s'==c)
+		else if('s'==c||i==1990)
 		{
+			cout<<"waiting for saving....."<<endl;
 			double t0=clock();
 			_mesh_generator->generateMesh();
 			cout<<"generate mesh cost"<<(clock()-t0)/1000.0<<"ms"<<endl;//_cur_transform.print();
@@ -62,7 +63,7 @@ void MainController::mainLoop()
 			{
 				cout<<"save mesh failed"<<endl;
 			}
-		//	KeyframeMan::instance()->writeToFile("output/keyframe/idx.txt");
+			KeyframeMan::instance()->writeToFile("output/keyframe/idx.txt");
 
 		}
 
@@ -81,11 +82,8 @@ bool MainController::init(string configfilename)
 		return false;
 	}
 	else AppParams::instance()->print();
-	if(false==CudaDeviceDataMan::instance()->init())
-	{
-		cout<<"cuda data init failed"<<endl;
-		return false;
-	}
+	CudaDeviceDataMan::instance()->init();
+
 	if(AppParams::instance()->_switch_params.useDatasetRGBD)
 	{
 		_data_source=new DataSourceProducerRGBDDataset();

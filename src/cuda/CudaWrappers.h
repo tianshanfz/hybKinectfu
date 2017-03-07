@@ -28,8 +28,8 @@ extern "C" void cudaCalculateNewVertices(const CameraParams& depth_camera_params
 extern "C" void cudaCalculateNewNormals();
 extern "C" void cudaTruncDepth(float trunc_min,float trunc_max);
 extern "C" void cudaBiliearFilterDepth(float sigma_pixel,float sigma_depth);
-extern "C" void cudaProjectionMapFindCorrs(unsigned pyramid_level,const Mat44& cur_transform,const Mat44& last_transform_inv,const CameraParams& depth_camera_params,float dist_thres,float norm_sin_thres);
-extern "C" void cudaCalPointToPlaneErrSolverParams( unsigned pyramid_level);
+//extern "C" void cudaProjectionMapFindCorrs(unsigned pyramid_level,const Mat44& cur_transform,const Mat44& last_transform_inv,const CameraParams& depth_camera_params,float dist_thres,float norm_sin_thres);
+extern "C" void cudaCalPointToPlaneErrSolverParams( unsigned pyramid_level,const Mat44& cur_transform,const Mat44& last_transform_inv,const CameraParams& depth_camera_params,float dist_thres,float norm_sin_thres);
 extern "C" void cudaCalSDFSolverParams(const CameraParams& depth_camera_params,const Mat44& cur_transform);
 extern "C" void cudaIntegrateVolume(bool has_color,bool use_angle_weight_color,const Mat44& transform,const IntegrateParams& integrate_params,const CameraParams& depth_camera_params,const CameraParams& rgb_camera_params);
 extern "C" void cudaRaycastingVolume(bool has_color,const Mat44& transform,const RayCasterParams& raycast_params,const CameraParams& depth_camera_params,float near_plane,float far_plane);

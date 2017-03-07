@@ -26,20 +26,21 @@ __device__ Vertex vertexInterp(float isolevel, const float3& p1, const float3& p
 }
 __device__ void appendTriangle(const Triangle& t,MarchingcubeData& data)
 {
-	if (*data.ptrNum() >= data.maxTriangles() ){
+	if (*data.triangleNumPtr() >= data.maxTriangles() ){
 		return; // todo
 	}
-	uint addr = atomicAdd(data.ptrNum(), 1);
+	uint addr = atomicAdd(data.triangleNumPtr(), 1);
 
-	Triangle* triangle = data.triangleData()+addr;
-	triangle->v0 = t.v0;
-	triangle->v1 = t.v1;
-	triangle->v2 = t.v2;
+	Triangle& triangle = data.at(addr);
+	triangle.v0 = t.v0;
+	triangle.v1 = t.v1;
+	triangle.v2 = t.v2;
 	return;
 }
 
 __device__ void extractIsoSurfaceAtPosition(const int3& voxelPos,bool has_color, const tsdfvolume& volume,float threshold_marchingcube,MarchingcubeData& marchingcube_data)
 {
+
 	float3 worldPos = volume.voxelPosToWorld(voxelPos);
 	const float isolevel = 0.0f;
 	float3 cell_size;
@@ -134,8 +135,7 @@ __device__ void extractIsoSurfaceAtPosition(const int3& voxelPos,bool has_color,
 		appendTriangle(t,marchingcube_data);
 	}
 }
-__global__ void extractIsoSurfaceKernel(bool has_color,tsdfvolume volume,float threshold_marchingcube,
-		MarchingcubeData marchingcube_data)
+__global__ void extractIsoSurfaceKernel(bool has_color,tsdfvolume volume,float threshold_marchingcube,MarchingcubeData marchingcube_data)
 {
 
 	int x = threadIdx.x + blockIdx.x * blockDim.x;
@@ -153,12 +153,11 @@ __global__ void extractIsoSurfaceKernel(bool has_color,tsdfvolume volume,float t
 }
 void cudaMarchingcube(bool has_color,float threshold_marchingcube)
 {
-	tsdfvolume volume=CudaDeviceDataMan::instance()->_volume;
+	tsdfvolume volume=CudaDeviceDataMan::instance()->volume;
 
-	MarchingcubeData marchingcube_data =CudaDeviceDataMan::instance()->_marchingcube_data;
+	MarchingcubeData marchingcube_data =CudaDeviceDataMan::instance()->marchingcube_data;
 	const dim3 blockSize(BLOCK_SIZE_2D_X, BLOCK_SIZE_2D_Y);
 	const dim3 gridSize(divUp(volume.resolution().x, BLOCK_SIZE_2D_X), divUp(volume.resolution().y, BLOCK_SIZE_2D_Y));
-
 	extractIsoSurfaceKernel << <gridSize, blockSize >> >(has_color,volume,threshold_marchingcube,marchingcube_data);
 	cudaDeviceSynchronize();
 

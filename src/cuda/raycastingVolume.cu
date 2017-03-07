@@ -69,12 +69,12 @@ __device__ void raySample(unsigned  x, unsigned  y,bool has_color,
 												const float3& world_camera_pos,
 												const float3& world_dir,
 												const float3& cam_dir,
-												Point4fMap2D vertices_output,
-												Vector4fMap2D normals_output,
-												Color3uMap2D color_output,
+												Point4fMap2D& vertices_output,
+												Vector4fMap2D& normals_output,
+												Color3uMap2D& color_output,
 												float min_interval,
-												float max_interval,
-												unsigned *traverse_ray_count)
+												float max_interval
+												)
 {//must be 0<=x<cols and 0<=y<rows
 	float ray_current = min_interval;
 	float ray_end = max_interval;
@@ -82,14 +82,14 @@ __device__ void raySample(unsigned  x, unsigned  y,bool has_color,
 	float3 last_world_pos = { 0, 0, 0 };
 	while (ray_current < ray_end)
 	{
-		if (last_sdf < 0.0f) break;
 		float3 cur_world_pos = world_camera_pos + world_dir*ray_current; // sample along ray direction
 		Voxel v;
 
-		if (false == volume.getVoxel(cur_world_pos, v)) break;
+		volume.getVoxel(cur_world_pos, v);
 
 		float sdf = v.tsdf;
-		if (sdf < 0.0f) // current sample is always valid here zero crossing
+	//	if(last_sdf<0&&sdf>0)break;
+		if (last_sdf > 0.0f&&sdf < 0.0f) // current sample is always valid here zero crossing
 		{
 
 			float ftdt, ft;
@@ -102,13 +102,13 @@ __device__ void raySample(unsigned  x, unsigned  y,bool has_color,
 			{
 				uchar3 color;
 				volume.interpolateColor(vertex, color);
-				color_output.set_data(x, y, color);
+				color_output.at(x, y)= color;
 			}
 			//float depth = alpha *cam_dir.z;//from ray dir to z dir
 			if (false == gradientForPoint(volume, last_world_pos, vertex, grad)) break;
 			//atomicAdd(traverse_ray_count, 1); //for debugging
-			vertices_output.set_data(x, y, make_float4(vertex.x,vertex.y,vertex.z, 1.0));
-			normals_output.set_data(x, y,make_float4(grad.x,grad.y,grad.z, 0));
+			vertices_output.at(x, y)= make_float4(vertex.x,vertex.y,vertex.z, 1.0);
+			normals_output.at(x, y)=make_float4(grad.x,grad.y,grad.z, 0);
 			break;
 		}
 		last_sdf  = sdf;
@@ -126,7 +126,6 @@ __global__ void raycastKernel(bool has_color,
 		Point4fMap2D vertices_output,
 		Vector4fMap2D normals_output,
 		Color3uMap2D color_output,
-		unsigned *traverse_ray_count,
 		float near_plane,
 		float far_plane
 		)
@@ -136,9 +135,9 @@ __global__ void raycastKernel(bool has_color,
 	const unsigned  cols = depth_camera_params.cols;
 	const unsigned  rows = depth_camera_params.rows;
 	if(x>=cols||y>=rows) return;
-	vertices_output.set_data(x,y,{ 0, 0, 0,0 });
-	normals_output.set_data(x, y, { 0, 0, 0, 0 });
-	if(has_color)color_output.set_data(x, y, { 0, 0, 0 });
+	vertices_output.at(x,y)={ 0, 0, 0,0 };
+	normals_output.at(x, y)={ 0, 0, 0, 0 };
+	if(has_color)color_output.at(x, y)= { 0, 0, 0 };
 	float3 cam_dir = normalize(DepthCamera::depthToSkeleton(x, y, 1.0,depth_camera_params));
 	float3 world_camera_pos = transform.getTranslation();
 	float4 world_dir4=transform*make_float4(cam_dir.x,cam_dir.y,cam_dir.z, 0.0);
@@ -153,22 +152,22 @@ __global__ void raycastKernel(bool has_color,
 	max_interval=fminf(max_interval,far_plane/cam_dir.z);
 	if (min_interval >=max_interval) return;
 
-	raySample(x, y,has_color, raycast_params, depth_camera_params, volume, world_camera_pos, world_dir, cam_dir, vertices_output, normals_output, color_output, min_interval, max_interval,traverse_ray_count);
+	raySample(x, y,has_color, raycast_params, depth_camera_params, volume, world_camera_pos, world_dir, cam_dir, vertices_output, normals_output, color_output, min_interval, max_interval);
 }
 
 void cudaRaycastingVolume(bool has_color,const Mat44& transform,const RayCasterParams& raycast_params,const CameraParams& depth_camera_params,float near_plane,float far_plane)
 {
-	Point4fMap2D output_vertices=CudaDeviceDataMan::instance()->_model_vertices_pyramid[0];
-	Vector4fMap2D output_normal=CudaDeviceDataMan::instance()->_model_normals_pyramid[0];
-	Color3uMap2D output_color=CudaDeviceDataMan::instance()->_raycast_rgb;
-	tsdfvolume volume=CudaDeviceDataMan::instance()->_volume;
+	Point4fMap2D output_vertices=CudaDeviceDataMan::instance()->model_vertices_pyramid[0];
+	Vector4fMap2D output_normal=CudaDeviceDataMan::instance()->model_normals_pyramid[0];
+	Color3uMap2D output_color=CudaDeviceDataMan::instance()->raycast_rgb;
+	tsdfvolume volume=CudaDeviceDataMan::instance()->volume;
 
-	unsigned *traverse_ray_count=CudaDeviceDataMan::instance()->_debug_count;
-	cudaMemset((void*)traverse_ray_count,0,sizeof(unsigned));
+	//unsigned *traverse_ray_count=CudaDeviceDataMan::instance()->_debug_count;
+	//cudaMemset((void*)traverse_ray_count,0,sizeof(unsigned));
 	const dim3 blockSize(BLOCK_SIZE_2D_X, BLOCK_SIZE_2D_Y);
 	const dim3 gridSize(divUp(output_vertices.cols(), BLOCK_SIZE_2D_X), divUp(output_vertices.rows(), BLOCK_SIZE_2D_Y));
 
-	raycastKernel<<<gridSize,blockSize>>>( has_color,raycast_params,depth_camera_params,transform, volume,output_vertices,output_normal,output_color,traverse_ray_count,near_plane,far_plane);
+	raycastKernel<<<gridSize,blockSize>>>( has_color,raycast_params,depth_camera_params,transform, volume,output_vertices,output_normal,output_color,near_plane,far_plane);
 	cudaDeviceSynchronize();
 	//int traverse_ray_count_cpu;
 	//cudaMemcpy(&traverse_ray_count_cpu,traverse_ray_count,sizeof(int),cudaMemcpyDeviceToHost);

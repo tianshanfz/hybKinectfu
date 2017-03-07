@@ -10,10 +10,7 @@
 #include "AppParams.h"
 #include "cuda/CudaWrappers.h"
 #include "cuda/CudaDeviceDataMan.h"
-<<<<<<< HEAD
 //#include"keyframeMan.h"
-=======
->>>>>>> f7d6df5e5ebb5e3d425bd48eb37cda280cd26a34
 MeshGeneratorMarchingcube::MeshGeneratorMarchingcube() {
 	// TODO Auto-generated constructor stub
 
@@ -25,16 +22,14 @@ MeshGeneratorMarchingcube::~MeshGeneratorMarchingcube() {
 
 void MeshGeneratorMarchingcube::generateMesh()
 {
-
+	cout<<"waiting for marching cube "<<endl;
 	cudaMarchingcube(AppParams::instance()->_switch_params.useRGBData ,
 			300*AppParams::instance()->_volume_params.fVolumeMeterSize/AppParams::instance()->_volume_params.nResolution);
+	cout<<"marching cube done"<<endl;
 }
 bool MeshGeneratorMarchingcube::copyTrianglesToCPU()
 {
-	MarchingcubeData marchingcube_data =CudaDeviceDataMan::instance()->_marchingcube_data;
-	MarchingcubeData marchingcube_data_cpu;
-	marchingcube_data_cpu.init(CPU);
-	marchingcube_data_cpu.copyFrom(marchingcube_data);
+	MarchingcubeData marchingcube_data_cpu=CudaDeviceDataMan::instance()->marchingcube_data.clone(CPU);
 	int triangle_num=marchingcube_data_cpu.triangleNums();
 	cout << "Marching Cubes triangles = " <<triangle_num  << std::endl;
 	if (triangle_num == 0)
@@ -49,19 +44,18 @@ bool MeshGeneratorMarchingcube::copyTrianglesToCPU()
 
 	//float3*  vc = (float3*) triangle;
 	for (unsigned int i = 0; i <  triangle_num; i++) {
-		Triangle* ptriangle=marchingcube_data_cpu.triangleData()+i;
-		_meshes.m_Vertices[3*i] = ptriangle->v0.pos;
-		_meshes.m_Vertices[3 * i + 1] = ptriangle->v1.pos;
-		_meshes.m_Vertices[3 * i + 2] = ptriangle->v2.pos;
+		const Triangle& triangle=marchingcube_data_cpu.at(i);
+		_meshes.m_Vertices[3*i] = triangle.v0.pos;
+		_meshes.m_Vertices[3 * i + 1] = triangle.v1.pos;
+		_meshes.m_Vertices[3 * i + 2] = triangle.v2.pos;
 		if (AppParams::instance()->_switch_params.useRGBData == true)
 		{
-			_meshes.m_Colors[3 * i] = make_float4(ptriangle->v0.color.x,ptriangle->v0.color.y,ptriangle->v0.color.z, 1.0);
-			_meshes.m_Colors[3 * i + 1] = make_float4(ptriangle->v1.color.x,ptriangle->v1.color.y,ptriangle->v1.color.z, 1.0);
-			_meshes.m_Colors[3 * i + 2] = make_float4(ptriangle->v2.color.x,ptriangle->v2.color.y,ptriangle->v2.color.z, 1.0);
+			_meshes.m_Colors[3 * i] = make_float4(triangle.v0.color.z,triangle.v0.color.y,triangle.v0.color.x, 1.0);
+			_meshes.m_Colors[3 * i + 1] = make_float4(triangle.v1.color.z,triangle.v1.color.y,triangle.v1.color.x, 1.0);
+			_meshes.m_Colors[3 * i + 2] = make_float4(triangle.v2.color.z,triangle.v2.color.y,triangle.v2.color.x, 1.0);
 		}
 	}
 
-	marchingcube_data_cpu.destroy();
 	return true;
 }
 bool MeshGeneratorMarchingcube::saveMesh(const string& filename)
@@ -99,8 +93,5 @@ bool MeshGeneratorMarchingcube::saveMesh(const string& filename)
 	ml::MeshIOf::saveToFile(filename, _meshes);
 	std::cout << "done!" << std::endl;
 	return 0;//textureMesh(filename);
-<<<<<<< HEAD
 
-=======
->>>>>>> f7d6df5e5ebb5e3d425bd48eb37cda280cd26a34
 }

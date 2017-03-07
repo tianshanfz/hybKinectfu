@@ -10,7 +10,10 @@
 
 #include"utils/cpu_include.h"
 #include"cuda/DataMap.h"
-
+typedef float4 Vector4f;
+typedef uchar3 Color3u;
+typedef CudaMap2D<Color3u> Color3uMap2D;
+typedef CudaMap2D<Vector4f> Vector4fMap2D;
 class DataIO {
 public:
 	static void saveVector4fMap2D(const Vector4fMap2D& vector4_map,const char* filename);

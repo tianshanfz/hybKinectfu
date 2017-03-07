@@ -21,7 +21,7 @@ private:
 	bool vector6ToTransformMatrix(const Eigen::Matrix<float, 6, 1, 0, 6, 1>& x,  Eigen::Matrix4f& output);
 	void findCorresSet(const unsigned level,const Mat44& cur_transform,const Mat44& last_transform_inv);
 	bool minimizePointToPlaneErrFuncHost(unsigned level,Eigen::Matrix<float, 6, 1> &six_dof);
-	bool minimizePointToPlaneErrFunc(unsigned level,Eigen::Matrix<float, 6, 1> &six_dof);
+	bool minimizePointToPlaneErrFunc(unsigned level,Eigen::Matrix<float, 6, 1> &six_dof,const Mat44& cur_transform,const Mat44& last_transform_inv);
 	vector<int> _iter_nums;
 	vector<CameraParams> _camera_params_pyramid;
 };

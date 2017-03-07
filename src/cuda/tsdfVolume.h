@@ -20,6 +20,10 @@ struct Voxel
 class tsdfvolume
 {
 public:
+	tsdfvolume(DeviceKind dev_kind):_data(dev_kind)
+	{
+
+	}
 	__device__ __host__ float3 size()const{ return _size; }
 	__device__ __host__ int3 resolution()const{ return _resolution; }
 	bool init(const tsdfVolumeParams& params)
@@ -27,13 +31,9 @@ public:
 		_size = make_float3(params.fVolumeMeterSize, params.fVolumeMeterSize, params.fVolumeMeterSize);
 		_resolution = make_int3(params.nResolution, params.nResolution, params.nResolution);
 		_max_weight=params.fWeightMax;
-		_data.create_gpu(_resolution.x, _resolution.y*_resolution.z);
-		_data.setZero();
+		_data.resize(_resolution.x, _resolution.y*_resolution.z);
+		_data.clearData();
 		return true;
-	}
-	void release()
-	{
-		_data.destroy();
 	}
 	__device__ __host__ float3 voxelPosToWorld(const int3& pv)const
 	{
@@ -49,7 +49,7 @@ public:
 	}
 	__device__ __host__ int3 worldPosToVoxel(const float3& worldPos)const
 	{
-		int vx = (int)(worldPos.x *_resolution.x / _size.x);        // round to negative infinity
+		int vx = (int)(worldPos.x *_resolution.x / _size.x);
 		int vy = (int)(worldPos.y*_resolution.y / _size.y);
 		int vz = (int)(worldPos.z*_resolution.z / _size.z);
 		return make_int3(vx, vy, vz);
@@ -58,9 +58,9 @@ public:
 	{
 		int row = z*_resolution.y + y;
 		int col = x;
-		float oldtsdf = _data.get_data(col,row).tsdf;
-		float oldweight = _data.get_data(col,row).weight;
-		float3 oldcolor = make_float3(_data.get_data(col, row).color.x, _data.get_data(col, row).color.y, _data.get_data(col, row).color.z);
+		float oldtsdf = _data.at(col,row).tsdf;
+		float oldweight = _data.at(col,row).weight;
+		float3 oldcolor = make_float3(_data.at(col, row).color.x, _data.at(col, row).color.y, _data.at(col, row).color.z);
 		Voxel newvoxel;
 		newvoxel.weight = fminf(oldweight + weight, _max_weight);
 		newvoxel.tsdf = (oldtsdf*oldweight + tsdf*weight) / (oldweight + weight);
@@ -69,30 +69,30 @@ public:
 		newvoxel.color.y=  fminf(255.0,(oldcolor.y*oldweight + color.y*weight_color) / (oldweight + weight_color));
 		newvoxel.color.z = fminf(255.0,(oldcolor.z*oldweight + color.z*weight_color) / (oldweight + weight_color));
 
-		_data.set_data(col,row, newvoxel);
+		_data.at(col,row)= newvoxel;
 		return ;
 	}
 	__device__ __host__  Voxel getVoxel(int3 voxelPos)const
 	{
 		int row = voxelPos.z*_resolution.y + voxelPos.y;
 		int col = voxelPos.x;
-		return  _data.get_data(col, row);
+		return  _data.at(col, row);
 	}
 	__device__ __host__  bool getVoxel(const float3& worldPos, Voxel &v)const
 	{
-		int vx = (int)(worldPos.x *_resolution.x/_size.x+0.5);        // round to negative infinity
-		int vy = (int)(worldPos.y*_resolution.y / _size.y+0.5);
-		int vz = (int)(worldPos.z*_resolution.z / _size.z+0.5);
-		if (vx < 0 || vx >= _resolution.x ||  vy <= 0|| vy >= _resolution.y || vz < 0 || vz >= _resolution.z)
+		int vx = (int)(worldPos.x*_resolution.x/_size.x);
+		int vy = (int)(worldPos.y*_resolution.y/_size.y);
+		int vz = (int)(worldPos.z*_resolution.z/_size.z);
+/*		if (vx < 0 || vx >= _resolution.x ||  vy <= 0|| vy >= _resolution.y || vz < 0 || vz >= _resolution.z)
 		{
 			return false;
-		}
+		}*/
 		vx = max(0, min(vx, _resolution.x - 1));
 		vy = max(0, min(vy, _resolution.y - 1));
 		vz = max(0, min(vz, _resolution.z- 1));
 		int row = vz*_resolution.y + vy;
 		int col = vx;
-		v= _data.get_data(col, row);
+		v= _data.at(col, row);
 		return true;
 	}
 	__device__ __host__ bool interpolateSDF(const float3& pos, float& dist)const
@@ -159,7 +159,7 @@ protected:
 		cell_size.x =size().x / resolution().x;
 		cell_size.y =size().y / resolution().y;
 		cell_size.z =size().z / resolution().z;
-		float vx = (g.x + 0.5f) * cell_size.x;
+		float vx = (g.x + 0.5f) * cell_size.x;//center pos
 		float vy = (g.y + 0.5f) * cell_size.y;
 		float vz = (g.z + 0.5f) * cell_size.z;
 
@@ -175,7 +175,7 @@ protected:
 	float3 _size;//meter
 	int3 _resolution;
 	float _max_weight;
-	DataMap2D<Voxel> _data;
+	CudaMap2D<Voxel> _data;
 
 };
 #endif

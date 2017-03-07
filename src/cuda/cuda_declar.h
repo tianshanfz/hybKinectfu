@@ -19,7 +19,11 @@
 #define BLOCK_SIZE_1D 512
 #endif
 #include<cmath>
+#include <cuda_runtime_api.h>
+#include<vector_functions.h>
 #include"DataMap.h"
+
+
 
 
 __host__ __device__ __forceinline__ bool isZero(const float3& v)

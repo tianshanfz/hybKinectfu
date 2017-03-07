@@ -6,11 +6,10 @@
  */
 
 #include "DataIO.h"
-
+#include"cuda/cuda_declar.h"
 void DataIO::saveVector4fMap2D(const Vector4fMap2D& vector4_map,const char* filename)
 {
-	Vector4fMap2D data_cpu;
-	data_cpu.create_cpu(vector4_map);
+	Vector4fMap2D data_cpu=vector4_map.clone(CPU);
 	int cols = data_cpu.cols();
 	int rows = data_cpu.rows();
 	ofstream file;
@@ -19,10 +18,10 @@ void DataIO::saveVector4fMap2D(const Vector4fMap2D& vector4_map,const char* file
 	for (int row = 0; row < rows; row++)
 	for (int col = 0; col < cols; col++)
 	{
-		file<<data_cpu.get_data(col,row).x<<" "
-			<<data_cpu.get_data(col,row).y<<" "
-			<<data_cpu.get_data(col,row).z<<" "
-			<<data_cpu.get_data(col,row).w<<endl;
+		file<<data_cpu.at(col,row).x<<" "
+			<<data_cpu.at(col,row).y<<" "
+			<<data_cpu.at(col,row).z<<" "
+			<<data_cpu.at(col,row).w<<endl;
 	}
 	file.close();
 

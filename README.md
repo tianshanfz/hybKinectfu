@@ -1,6 +1,6 @@
 # hybKinectfu
 Implementation of some rgbd-based real-time 3d reconstruction algorithms.
-This is a backup version. Use the code as your own risk.
+This is a backup version. 
 
 Reference paper and librarises:
 "KinectFusion: Real-Time Dense Surface Mapping and Tracking"

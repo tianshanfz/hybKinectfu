@@ -22,14 +22,14 @@ __global__ void trucDepthKernel(DepthfMap2D input,DepthfMap2D output,float trunc
 	const unsigned  rows = input.rows();
 	if (x <cols && y <rows)
 	{
-		float depth=input.get_data(x,y);
+		float depth=input.at(x,y);
 		if(depth<trunc_max&&depth>trunc_min)
 		{
-			output.set_data(x,y,depth);
+			output.at(x,y)=depth;
 		}
 		else
 		{
-			output.set_data(x,y,0);
+			output.at(x,y)=0;
 		}
 	}
 
@@ -41,9 +41,9 @@ __global__ void biateralFilterKernel(const DepthfMap2D input, DepthfMap2D output
 	int cols = input.cols();
 	int rows = input.rows();
 	if (x >=cols || y >=rows)return;
-	output.set_data(x, y, 0);
+	output.at(x, y)=input.at(x,y);
 	const int kernelRadius = (int)ceil(2.0*sigma_pixel);
-	float value = input.get_data(x, y);
+	float value = input.at(x, y);
 	if (value == 0)
 	{
 		return;
@@ -58,7 +58,7 @@ __global__ void biateralFilterKernel(const DepthfMap2D input, DepthfMap2D output
 	{
 		for (int cx =x_start; cx <=x_end; ++cx)
 		{
-			float tmp = input.get_data(cx, cy);
+			float tmp = input.at(cx, cy);
 			if (tmp == 0)
 			{
 				continue;
@@ -75,12 +75,12 @@ __global__ void biateralFilterKernel(const DepthfMap2D input, DepthfMap2D output
 		}
 	}
 	//must be sum2 >0 unless sigma_pixel<0
-	output.set_data(x, y, sum1 / sum2);
+	if(sum2>0)output.at(x, y)=sum1 / sum2;
 }
 void cudaTruncDepth(float trunc_min,float trunc_max)
 {
-	DepthfMap2D input=CudaDeviceDataMan::instance()->_raw_depth;
-	DepthfMap2D output=CudaDeviceDataMan::instance()->_trunced_depth;
+	DepthfMap2D input=CudaDeviceDataMan::instance()->raw_depth;
+	DepthfMap2D output=CudaDeviceDataMan::instance()->trunced_depth;
 	const dim3 blockSize(BLOCK_SIZE_2D_X, BLOCK_SIZE_2D_Y);
 	const dim3 gridSize(divUp(input.cols(), BLOCK_SIZE_2D_X), divUp(input.rows(), BLOCK_SIZE_2D_Y));
 	trucDepthKernel<<<gridSize,blockSize>>>(input,output, trunc_min,trunc_max);
@@ -88,8 +88,8 @@ void cudaTruncDepth(float trunc_min,float trunc_max)
 }
 void cudaBiliearFilterDepth(float sigma_space,float sigma_data)
 {
-	DepthfMap2D input=CudaDeviceDataMan::instance()->_trunced_depth;
-	DepthfMap2D output=CudaDeviceDataMan::instance()->_filtered_depth;
+	DepthfMap2D input=CudaDeviceDataMan::instance()->trunced_depth;
+	DepthfMap2D output=CudaDeviceDataMan::instance()->filtered_depth;
 	const dim3 blockSize(BLOCK_SIZE_2D_X, BLOCK_SIZE_2D_Y);
 	const dim3 gridSize(divUp(input.cols(), BLOCK_SIZE_2D_X), divUp(input.rows(), BLOCK_SIZE_2D_Y));
 	float sigmadata_inv = 0.5 / (sigma_data*sigma_data);

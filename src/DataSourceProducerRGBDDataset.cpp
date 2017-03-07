@@ -108,7 +108,22 @@ bool DataSourceProducerRGBDDataset::readDataFromSource(DepthFrameData& depth_dat
 		cv::Mat cur_depth_mat= cv::imread(cur_frame_filepath,CV_LOAD_IMAGE_UNCHANGED);
 		if(cur_depth_mat.empty())return false;
 		cur_depth_mat/=_depth_factor;
-		depth_data.setFrameData(cur_depth_mat,cur_timestamp);
+
+		if(AppParams::instance()->_depth_camera_params.cols!=cur_depth_mat.cols ||
+				AppParams::instance()->_depth_camera_params.rows!=cur_depth_mat.rows)
+		{
+			cv::Size dsize = cv::Size(AppParams::instance()->_depth_camera_params.cols,AppParams::instance()->_depth_camera_params.rows);
+	        cv::Mat img2;
+	        cv::Size sz;
+	        pyrDown(cur_depth_mat,img2,sz,cv::BORDER_DEFAULT);
+			depth_data.setFrameData(img2,cur_timestamp);
+		}
+		else
+		{
+			depth_data.setFrameData(cur_depth_mat,cur_timestamp);
+		}
+
+
 
 	}
 	double target_timestamp=cur_timestamp;

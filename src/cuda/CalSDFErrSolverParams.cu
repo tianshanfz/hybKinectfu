@@ -65,7 +65,7 @@ __device__ bool buildSDFSolverRows(const tsdfvolume& volume,const float3& p, con
 	output[6] = sdf0;
 	return true;
 }
-__global__ void  computeSDFSolverbufKernel(const tsdfvolume volume, const DepthfMap2D depths, const CameraParams depth_camera_params, const Mat44 curTrans,DataMap2D<float> gbuf,
+__global__ void  computeSDFSolverbufKernel(const tsdfvolume volume, const DepthfMap2D depths, const CameraParams depth_camera_params, const Mat44 curTrans,CudaMap2D<float> gbuf,
 	const Mat44 plus_cur_w1, const Mat44  minus_cur_w1, const Mat44  plus_cur_w2, const Mat44 minus_cur_w2, const Mat44 plus_cur_w3, const Mat44  minus_cur_w3,
 	float w_h, float v_h)
 {
@@ -75,7 +75,7 @@ __global__ void  computeSDFSolverbufKernel(const tsdfvolume volume, const Depthf
 	unsigned tid = flattenedThreadId();
 	smem[tid] = 0;
 	float row[7] = { 0, 0, 0, 0, 0, 0, 0 };
-	float d = depths.get_data(x, y);
+	float d = depths.at(x, y);
 	if (d == 0)
 	{
 	}
@@ -100,7 +100,7 @@ __global__ void  computeSDFSolverbufKernel(const tsdfvolume volume, const Depthf
 
 			if (tid == 0)
 			{
-				gbuf.set_data(blockId, shift++,smem[0]);
+				gbuf.at(blockId, shift++)=smem[0];
 			}
 		}
 	}
@@ -109,10 +109,10 @@ __global__ void  computeSDFSolverbufKernel(const tsdfvolume volume, const Depthf
 
 void cudaCalSDFSolverParams(const CameraParams& depth_camera_params,const Mat44& cur_transform)
 {
-	tsdfvolume volume=CudaDeviceDataMan::instance()->_volume;
-	DepthfMap2D depths=CudaDeviceDataMan::instance()->_trunced_depth;
-	DataMap2D<float> buf_temp=CudaDeviceDataMan::instance()->_rigid_align_buf_temp_pyramid[0];
-	DataMap1D<float> buf_reduced=CudaDeviceDataMan::instance()->_rigid_align_buf_reduced;
+	tsdfvolume volume=CudaDeviceDataMan::instance()->volume;
+	DepthfMap2D depths=CudaDeviceDataMan::instance()->trunced_depth;
+	CudaMap2D<float> buf_temp=CudaDeviceDataMan::instance()->rigid_align_buf_temp_pyramid[0];
+	CudaMap1D<float> buf_reduced=CudaDeviceDataMan::instance()->rigid_align_buf_reduced;
 
 
 	float w_h = 0.001;
@@ -134,5 +134,5 @@ void cudaCalSDFSolverParams(const CameraParams& depth_camera_params,const Mat44&
 	const dim3 blockSize(BLOCK_SIZE_2D_X, BLOCK_SIZE_2D_Y);
 	const dim3 gridSize(divUp(depths.cols(), BLOCK_SIZE_2D_X), divUp(depths.rows(), BLOCK_SIZE_2D_Y));
 	computeSDFSolverbufKernel << <gridSize, blockSize >> >(volume, depths, depth_camera_params, cur_transform, buf_temp, plus_cur_w1, minus_cur_w1, plus_cur_w2, minus_cur_w2, plus_cur_w3, minus_cur_w3, w_h, v_h);
-	reduceGbufKernel << <buf_reduced.cols(), 512, 512 * sizeof(float) >> >(buf_temp.data(),buf_temp.cols(),buf_temp.rows(), buf_reduced.data(), 512);
+	reduceGbufKernel << <buf_reduced.count(), 512, 512 * sizeof(float) >> >(buf_temp.ptr(),buf_temp.cols(),buf_temp.rows(), buf_reduced.ptr(), 512);
 }

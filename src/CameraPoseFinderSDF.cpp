@@ -58,14 +58,13 @@ bool CameraPoseFinderSDF::estimateCameraPose(const DepthFrameData& depth_frame,c
 	{
 		int validCount=0;
 		cudaCalSDFSolverParams( AppParams::instance()->_depth_camera_params, cur_transform);
-		DataMap1D<float> buf;
-		buf.create_cpu(CudaDeviceDataMan::instance()->_rigid_align_buf_reduced);
+		CudaMap1D<float> buf=(CudaDeviceDataMan::instance()->rigid_align_buf_reduced).clone(CPU);
 		int shift = 0;
 		for (int i = 0; i < 6; ++i)  //rows
 		{
 			for (int j = i; j < 7; ++j)  //cols && b
 			{
-				float value = buf.get_data(shift++);
+				float value = buf.at(shift++);
 				if (j == 6)
 				{
 					b(i) = value;
@@ -100,7 +99,6 @@ bool CameraPoseFinderSDF::estimateCameraPose(const DepthFrameData& depth_frame,c
 		Eigen::Matrix4f temp_t = temp.transpose();
 		cur_transform=Mat44(temp_t.data());
 		iter++;
-		buf.destroy();
 	}
 	_pose=cur_transform;
 
